@@ -1,0 +1,67 @@
+install.packages("plyr")
+install.packages("tm")
+install.packages("Rstem")
+install.packages("xlsx")
+library(plyr)
+library(tm)
+library(Rstem)
+library(xlsx)
+install.packages("C:/Users/Norbert/Desktop/research/sentiment_0.1 (1).tar.gz", repos = NULL, type="source")
+library(sentiment)
+library(rJava)
+
+#read CSV file in
+data <- read.csv(file="C:/Users/Norbert/Desktop/newFormat_1.csv", header = FALSE)
+
+#try-catch exception handling
+try.error = function(x)
+{
+   # create missing value
+   y = NA
+   # tryCatch error
+   try_error = tryCatch(tolower(x), error=function(e) e)
+   # if not an error
+   if (!inherits(try_error, "error"))
+   y = tolower(x)
+   # result
+   return(y)
+}
+
+#initializing review array
+review <- rep("a", times = nrow(data))
+emotion <- rep(1, times = nrow(data))
+polarity <- rep(1, times = nrow(data))
+
+for (i in 1:1000) {
+review[i] <- as.vector((data)[i,2])
+review[i] = sapply(review[i], try.error)
+review[i] = review[i][!is.na(review[i])]
+# classify emotion
+class_emo = classify_emotion(review[i], algorithm="bayes", prior=1.0)
+# get emotion best fit
+emotion[i] = class_emo[,7]
+# substitute NA's by "unknown"
+# emotion[i,is.na(emotion[i])] = "unknown"
+
+# classify polarity
+class_pol = classify_polarity(review[i], algorithm="bayes")
+# get polarity best fit
+polarity[i] = class_pol[,4]
+
+data[i,3] = emotion[i]
+data[i,4] = polarity[i]
+}
+
+write.csv(data,"data1000.csv", row.names = FALSE)
+# rest of the algorithm (should be in the loop)
+
+
+# data frame with results
+sent_df = data.frame(text=review, emotion=emotion,
+polarity=polarity, stringsAsFactors=FALSE)
+
+# sort data frame
+sent_df = within(sent_df,
+  emotion <- factor(emotion, levels=names(sort(table(emotion), decreasing=TRUE))))
+
+write.xlsx(sent_df, "C:/Users/Norbert/Desktop/Sent. Analysis Sample.xlsx")
